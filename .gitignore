@@ -1,0 +1,36 @@
+# --- Java / Maven ---
+target/
+*.jar
+*.war
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# --- Node / frontend ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- IDEs ---
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.DS_Store
+
+# --- Entorno / secretos ---
+.env
+.env.*
+!.env.example
+
+# --- Config de herramientas (no hace falta para compilar) ---
+.claude/settings.local.json
+CLAUDE.md
+.mcp.json

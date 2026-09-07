@@ -1,4 +1,4 @@
-package com.truchprode.backend;
+package com.truchoprode;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

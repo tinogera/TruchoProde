@@ -1,4 +1,4 @@
-package com.truchprode.backend;
+package com.truchoprode;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

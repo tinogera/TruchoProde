@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: truchoprode-server
+
+  # Lee el archivo .env de esta carpeta si existe (esta en .gitignore).
+  # "optional:" = si no esta, arranca igual con los defaults de abajo.
+  config:
+    import: optional:file:./.env[.properties]
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/truchoprode}
+    username: ${DB_USER:truchoprode}
+    password: ${DB_PASSWORD:truchoprode}
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+mybatis:
+  configuration:
+    # las columnas snake_case del SQL se mapean a los campos camelCase de Java
+    map-underscore-to-camel-case: true
+  type-aliases-package: com.truchoprode.domain
+  mapper-locations: classpath:mapper/*.xml
+
+truchoprode:
+  jwt:
+    # NO poner el secreto real aca: se lee de la variable de entorno JWT_SECRET
+    secret: ${JWT_SECRET:cambiar-este-secreto-solo-sirve-para-desarrollo-local-32b}
+    expiracion-minutos: ${JWT_EXPIRACION_MINUTOS:120}
+  cors:
+    origenes-permitidos: ${CORS_ORIGENES:http://localhost:5173}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    com.truchoprode: DEBUG

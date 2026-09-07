@@ -1,2 +1,8 @@
-/mvnw text eol=lf
+# Normalizacion de fin de linea (ver CLAUDE.md)
+* text=auto
+
+# El wrapper de Maven necesita LF si o si: con CRLF el shell no lo puede ejecutar
+server/mvnw text eol=lf
+# Los scripts de Windows necesitan CRLF
 *.cmd text eol=crlf
+*.bat text eol=crlf
