@@ -37,6 +37,11 @@ Estas firmas se compilaron y corrieron contra las dependencias reales del proyec
 - La clave se arma con `Keys.hmacShaKeyFor(secreto.getBytes(StandardCharsets.UTF_8))` y necesita un secreto de 32 bytes o más. El default de `application.yml` tiene 56.
 - Al parsear, un token vencido tira `ExpiredJwtException`, uno con otra firma `SignatureException`, uno mal formado `MalformedJwtException` — las tres extienden `JwtException` — y un token vacío tira `IllegalArgumentException`, que **no** extiende `JwtException` y hay que capturar aparte.
 - Boot 4 movió los packages de test: es `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc`, **no** `org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc` de Boot 3.
+- Boot 4 usa **Jackson 3**, que cambió de package: el bean inyectable es
+  `tools.jackson.databind.ObjectMapper`, **no** `com.fasterxml.jackson.databind.ObjectMapper`. Las
+  dos versiones conviven en el classpath —Jackson 2 entra como transitiva de `jjwt-jackson`— pero la
+  que Boot registra como bean es la 3, así que importar la de `com.fasterxml` falla con
+  `NoSuchBeanDefinitionException`. En Jackson 3, `JsonNode.asText()` pasó a llamarse `asString()`.
 - Spring Security 7 usa el DSL de lambdas: `csrf(csrf -> csrf.disable())`, `authorizeHttpRequests(a -> a.requestMatchers(...).permitAll().anyRequest().authenticated())`, `sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))`.
 
 ---
@@ -1629,7 +1634,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -1666,7 +1671,7 @@ class AutenticacionEnHttpTest {
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
-        return json.readTree(respuesta).get("token").asText();
+        return json.readTree(respuesta).get("token").asString();
     }
 
     @Test

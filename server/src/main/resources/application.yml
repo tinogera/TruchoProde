@@ -12,6 +12,11 @@ spring:
     username: ${DB_USER:truchoprode}
     password: ${DB_PASSWORD:truchoprode}
 
+  # Devuelve los errores de validacion como ProblemDetail (RFC 7807) en vez del formato viejo.
+  mvc:
+    problemdetails:
+      enabled: true
+
   flyway:
     enabled: true
     locations: classpath:db/migration
