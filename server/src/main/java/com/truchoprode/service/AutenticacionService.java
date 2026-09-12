@@ -4,12 +4,21 @@ import com.truchoprode.domain.Autenticacion;
 import com.truchoprode.domain.Rol;
 import com.truchoprode.domain.TokenFirmado;
 import com.truchoprode.domain.Usuario;
+import com.truchoprode.exception.CredencialesInvalidasException;
 import com.truchoprode.exception.EmailTomadoException;
 import com.truchoprode.exception.NombreDeUsuarioTomadoException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 /** Las dos operaciones de la puerta de entrada: registrarse y loguearse. */
 public class AutenticacionService {
+
+    /**
+     * Hash de descarte con el que se compara cuando el usuario no existe. Sin esto, el login
+     * responderia mas rapido ante un usuario inexistente que ante una contrasena equivocada, y ese
+     * tiempo delataria exactamente lo mismo que el mensaje de error se cuida de no decir.
+     */
+    private static final String SENUELO =
+            "$2a$10$nUS9UM0NI.4EfCNrgeE8KOkiUQtgRhaVCXeLsqiXFC87ffju2cPDu";
 
     private final UsuarioService usuarios;
     private final PasswordEncoder codificador;
@@ -40,6 +49,20 @@ public class AutenticacionService {
         usuario.setContrasenaHash(codificador.encode(contrasena));
         usuario.setRol(Rol.JUGADOR);
         usuarios.crear(usuario);
+
+        return autenticar(usuario);
+    }
+
+    public Autenticacion login(String usuarioOEmail, String contrasena) {
+        Usuario usuario = usuarios.porNombreOEmail(usuarioOEmail).orElse(null);
+
+        if (usuario == null) {
+            codificador.matches(contrasena, SENUELO);
+            throw new CredencialesInvalidasException();
+        }
+        if (!codificador.matches(contrasena, usuario.getContrasenaHash())) {
+            throw new CredencialesInvalidasException();
+        }
 
         return autenticar(usuario);
     }
