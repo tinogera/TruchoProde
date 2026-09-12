@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.truchoprode.mapper.UsuarioMapper">
+
+    <!--
+      El rol se inserta explicitamente aunque la base ya tenga el default en JUGADOR. Si se dejara
+      al default, el objeto que quedo en memoria volveria con rol null y la respuesta del registro
+      diria rol: null en vez de JUGADOR.
+    -->
+    <insert id="insertar" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO usuario (nombre_usuario, email, contrasena_hash, rol)
+        VALUES (#{nombreUsuario}, #{email}, #{contrasenaHash}, #{rol})
+    </insert>
+
+    <select id="buscarPorId" resultType="Usuario">
+        SELECT id, nombre_usuario, email, contrasena_hash, rol, creado_en
+          FROM usuario
+         WHERE id = #{id}
+    </select>
+
+    <!--
+      Las dos formas de loguearse en una sola consulta. El lower() no es cosmetico: es el mismo que
+      usan los indices unicos de V1, asi que la busqueda los aprovecha en vez de recorrer la tabla
+      entera.
+    -->
+    <select id="buscarPorNombreOEmail" resultType="Usuario">
+        SELECT id, nombre_usuario, email, contrasena_hash, rol, creado_en
+          FROM usuario
+         WHERE lower(nombre_usuario) = lower(#{identificador})
+            OR lower(email) = lower(#{identificador})
+    </select>
+
+    <select id="existeNombreDeUsuario" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM usuario WHERE lower(nombre_usuario) = lower(#{nombreUsuario}))
+    </select>
+
+    <select id="existeEmail" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM usuario WHERE lower(email) = lower(#{email}))
+    </select>
+</mapper>
