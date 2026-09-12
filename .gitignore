@@ -34,3 +34,7 @@ yarn-error.log*
 .claude/settings.local.json
 CLAUDE.md
 .mcp.json
+.claude
+
+# Artefactos de proceso (spec y plan): quedan en local, no en el repo.
+docs/
