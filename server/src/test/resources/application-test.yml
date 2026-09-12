@@ -1,0 +1,5 @@
+# Perfil que usan los tests con @ActiveProfiles("test").
+# Solo apaga la tarea programada: el resto de la configuracion sale de application.yml.
+truchoprode:
+  avisos:
+    habilitados: false

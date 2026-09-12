@@ -17,6 +17,17 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  # Solo se usa cuando truchoprode.avisos.transporte = mail.
+  # Con Gmail, MAIL_PASSWORD es una "contrasena de aplicacion", no la del correo.
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PUERTO:587}
+    username: ${MAIL_USUARIO:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+
 mybatis:
   configuration:
     # las columnas snake_case del SQL se mapean a los campos camelCase de Java
@@ -31,6 +42,20 @@ truchoprode:
     expiracion-minutos: ${JWT_EXPIRACION_MINUTOS:120}
   cors:
     origenes-permitidos: ${CORS_ORIGENES:http://localhost:5173}
+
+  # Zona horaria con la que se muestran los horarios en los mails.
+  zona-horaria: ${ZONA_HORARIA:America/Argentina/Buenos_Aires}
+
+  avisos:
+    # false apaga la tarea programada sin tocar codigo.
+    habilitados: ${AVISOS_HABILITADOS:true}
+    # log = imprime el mail en la consola (desarrollo). mail = SMTP de verdad.
+    transporte: ${AVISOS_TRANSPORTE:log}
+    # Cuanto antes del partido se avisa, y cada cuanto se revisa la ventana.
+    anticipacion-minutos: ${AVISOS_ANTICIPACION_MINUTOS:60}
+    cada-minutos: ${AVISOS_CADA_MINUTOS:5}
+    remitente: ${MAIL_REMITENTE:TruchoProde <no-reply@truchoprode.local>}
+    url-base: ${AVISOS_URL_BASE:http://localhost:5173}
 
 server:
   port: ${SERVER_PORT:8080}

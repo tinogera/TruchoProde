@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.truchoprode.mapper.AvisoMapper">
+
+    <!--
+      Cruza los partidos de la ventana contra los usuarios avisables. Las cuatro condiciones son
+      las cuatro reglas del aviso: esta en algun grupo, no predijo, no fue avisado, quiere avisos.
+      El orden importa: el agrupador arma las tandas asumiendo esta salida ordenada.
+    -->
+    <select id="pendientesEntre" resultType="AvisoPendiente">
+        SELECT u.id             AS usuario_id,
+               u.email          AS email,
+               u.nombre_usuario AS nombre_usuario,
+               p.id             AS partido_id,
+               p.equipo_local   AS equipo_local,
+               p.equipo_visitante AS equipo_visitante,
+               p.comienza_en    AS comienza_en
+          FROM partido p
+          JOIN usuario u
+            ON u.quiere_avisos
+         WHERE p.comienza_en &gt;  #{desde}
+           AND p.comienza_en &lt;= #{hasta}
+           AND EXISTS (SELECT 1 FROM miembro m
+                        WHERE m.usuario_id = u.id)
+           AND NOT EXISTS (SELECT 1 FROM prediccion pr
+                            WHERE pr.usuario_id = u.id
+                              AND pr.partido_id = p.id)
+           AND NOT EXISTS (SELECT 1 FROM aviso_prediccion a
+                            WHERE a.usuario_id = u.id
+                              AND a.partido_id = p.id)
+         ORDER BY p.comienza_en, u.id, p.id
+    </select>
+
+    <!-- La clave primaria (usuario_id, partido_id) hace que un segundo aviso sea imposible. -->
+    <insert id="marcarEnviado">
+        INSERT INTO aviso_prediccion (usuario_id, partido_id)
+        VALUES (#{usuarioId}, #{partidoId})
+    </insert>
+
+</mapper>
