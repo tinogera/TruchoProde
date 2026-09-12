@@ -22,6 +22,11 @@
 - Los services **no llevan `@Service`**: son POJOs con constructor, ensamblados como `@Bean` en una `@Configuration`. Patrón establecido en `config/AvisosConfig.java`.
 - Los tests unitarios usan **dobles a mano** (clases estáticas privadas que implementan la interfaz), no Mockito. Patrón establecido en `service/AvisoDePrediccionServiceTest.java`.
 - Los tests de integración llevan `@SpringBootTest`, `@ActiveProfiles("test")` y `@Transactional` (rollback al terminar), con `JdbcTemplate` para armar los datos.
+- **Excepción a lo anterior:** un test que necesite ver un cambio de la base *entre dos pedidos HTTP*
+  no puede llevar `@Transactional`. Con una transacción compartida los dos pedidos caen en la misma
+  `SqlSession` y el caché de primer nivel de MyBatis devuelve el resultado ya leído, ignorando el
+  `UPDATE` del medio — el test da rojo con el código andando bien. En producción no pasa, porque
+  cada request abre su propia sesión. Ese test va sin `@Transactional` y limpia en un `@AfterEach`.
 - Aserciones con **AssertJ** (`assertThat`), nunca las de JUnit.
 - El esquema **no se toca**: no hay migración nueva en esta vertical. `V1__esquema_inicial.sql` ya tiene todo. Y jamás se edita una migración ya aplicada.
 - Ninguna credencial real entra en un archivo versionado. Al agregar una variable nueva hay que tocar los tres lugares: el `${...}` en `application.yml`, el valor en `server/.env` y el nombre en `server/.env.example`.
@@ -2035,6 +2040,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.truchoprode.domain.Autenticacion;
 import com.truchoprode.service.AutenticacionService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -2043,22 +2049,32 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Estos dos tests existen para que las decisiones no se deshagan sin que nadie se de cuenta. Si
  * alguien "optimiza" el filtro metiendo el rol adentro del token, el segundo se pone rojo.
+ *
+ * <p>OJO: a diferencia del resto de los tests de integracion, este NO lleva @Transactional, y es a
+ * proposito. Con una transaccion compartida los dos pedidos caen en la misma SqlSession de MyBatis
+ * y el cache de primer nivel devuelve el usuario que ya habia leido, ignorando el UPDATE del medio:
+ * el test daba rojo con el codigo funcionando bien. En produccion cada request abre su propia
+ * sesion, asi que sin @Transactional el test reproduce el escenario de verdad. El precio es limpiar
+ * a mano lo que se creo, que es lo que hace el @AfterEach.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("Las decisiones de la autenticacion")
 class DecisionesDeAutenticacionTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private AutenticacionService autenticacion;
     @Autowired private JdbcTemplate jdbc;
+
+    @AfterEach
+    void limpiar() {
+        jdbc.update("DELETE FROM usuario WHERE nombre_usuario IN ('fantasma', 'asciende')");
+    }
 
     @Test
     @DisplayName("el token de un usuario borrado deja de servir")
@@ -2260,8 +2276,9 @@ Si da `Connection refused`, la base no está levantada: pedirle al usuario `podm
 - [ ] **Step 6: Commit**
 
 ```bash
+# CLAUDE.md NO va: esta en .gitignore y no se versiona.
 git add server/src/test/java/com/truchoprode/controller/DecisionesDeAutenticacionTest.java \
-        CLAUDE.md Doc/TruchoProde_DiagramaClases.md
+        Doc/TruchoProde_DiagramaClases.md
 git commit -m "Blindar las dos decisiones de la autenticacion con tests
 
 Dos tests que no prueban plomeria sino decisiones: el token de un usuario

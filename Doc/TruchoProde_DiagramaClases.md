@@ -40,6 +40,26 @@ classDiagram
         ADMIN
     }
 
+    class UsuarioAutenticado {
+        <<record>>
+        +Long id
+        +String nombreUsuario
+        +Rol rol
+    }
+
+    class TokenFirmado {
+        <<record>>
+        +String token
+        +Instant expiraEn
+    }
+
+    class Autenticacion {
+        <<record>>
+        +String token
+        +Instant expiraEn
+        +Usuario usuario
+    }
+
     class Grupo {
         -Long id
         -String nombre
@@ -157,17 +177,17 @@ classDiagram
 
     class PrediccionController {
         <<REST>>
-        +guardar(Long usuarioId, PrediccionRequest cuerpo) PrediccionResponse
-        +deJornada(Long usuarioId, Long jornadaId) List~PrediccionResponse~
+        +guardar(UsuarioAutenticado usuario, PrediccionRequest cuerpo) PrediccionResponse
+        +deJornada(UsuarioAutenticado usuario, Long jornadaId) List~PrediccionResponse~
     }
     class TransferenciaController {
         <<REST>>
-        +transferir(Long emisorId, TransferenciaRequest cuerpo) TransferenciaResponse
-        +historialPropio(Long grupoId, Long usuarioId) List~TransferenciaResponse~
+        +transferir(UsuarioAutenticado emisor, TransferenciaRequest cuerpo) TransferenciaResponse
+        +historialPropio(Long grupoId, UsuarioAutenticado usuario) List~TransferenciaResponse~
     }
     class RankingController {
         <<REST>>
-        +ranking(Long grupoId, Long solicitanteId) List~FilaRanking~
+        +ranking(Long grupoId, UsuarioAutenticado solicitante) List~FilaRanking~
     }
     class AdminController {
         <<REST>>
@@ -243,6 +263,50 @@ classDiagram
 
     note for TransferenciaService "Recorta al saldo disponible en vez de rechazar. Saldo 0 devuelve Optional.empty(): no se registra nada."
     note for RankingService "Unico lugar donde se arma el saldo: global por predicciones + recibidos - transferidos."
+
+    class AuthController {
+        <<REST>>
+        +registro(RegistroRequest cuerpo) TokenResponse
+        +login(LoginRequest cuerpo) TokenResponse
+        +yo(UsuarioAutenticado usuario) UsuarioResponse
+    }
+    class AutenticacionService {
+        +registrar(String nombreUsuario, String email, String contrasena) Autenticacion
+        +login(String usuarioOEmail, String contrasena) Autenticacion
+    }
+    class UsuarioService {
+        +porId(Long id) Optional~Usuario~
+        +porNombreOEmail(String identificador) Optional~Usuario~
+        +nombreDeUsuarioTomado(String nombreUsuario) boolean
+        +emailTomado(String email) boolean
+        +crear(Usuario usuario) void
+    }
+    class JwtService {
+        +firmar(Long usuarioId) TokenFirmado
+        +usuarioDe(String token) Optional~Long~
+    }
+    class UsuarioMapper {
+        <<interface>>
+        +insertar(Usuario usuario) void
+        +buscarPorId(Long id) Usuario
+        +buscarPorNombreOEmail(String identificador) Usuario
+        +existeNombreDeUsuario(String nombreUsuario) boolean
+        +existeEmail(String email) boolean
+    }
+    class FiltroJwt {
+        <<filter>>
+        +doFilterInternal(HttpServletRequest pedido, HttpServletResponse respuesta, FilterChain cadena) void
+    }
+
+    AuthController --> AutenticacionService
+    AutenticacionService --> UsuarioService
+    AutenticacionService --> JwtService
+    UsuarioService --> UsuarioMapper
+    FiltroJwt --> JwtService
+    FiltroJwt --> UsuarioService
+
+    note for PrediccionController "El usuario sale del token, nunca de un parametro: si el id lo mandara el cliente, cualquiera podria predecir o transferir en nombre de otro."
+    note for FiltroJwt "Consulta el usuario por id en cada request en vez de leer el rol del token: promover a ADMIN toma efecto en el request siguiente, sin relogin."
 ```
 
 ---
@@ -406,7 +470,27 @@ classDiagram
     ReglaDeNegocioException <|-- PartidoYaComenzoException
     ReglaDeNegocioException <|-- ResultadoInvalidoException
 
+    class NoAutenticadoException {
+        +estadoHttp() int
+    }
+    class CredencialesInvalidasException {
+        +codigo() String
+    }
+    class NombreDeUsuarioTomadoException {
+        +codigo() String
+    }
+    class EmailTomadoException {
+        +codigo() String
+    }
+
+    TruchoProdeException <|-- NoAutenticadoException
+    NoAutenticadoException <|-- CredencialesInvalidasException
+    ReglaDeNegocioException <|-- NombreDeUsuarioTomadoException
+    ReglaDeNegocioException <|-- EmailTomadoException
+
     note for NoEsMiembroDelGrupoException "El secreto de las transferencias es autorizacion, no UI: el backend corta aca."
+    note for NoAutenticadoException "401 es 'no se quien sos'. NoAutorizadoException es 403: 'se quien sos y no te alcanza'. Confundirlas es el error clasico."
+    note for CredencialesInvalidasException "Un solo error para el usuario inexistente y la contrasena mal: si fueran distintos, el login serviria para averiguar que cuentas existen."
 ```
 
 ---
@@ -425,6 +509,8 @@ classDiagram
 | `Partido.golesLocal : Short` | anulable, con `CHECK` de resultado completo |
 | aviso enviado una sola vez | `aviso_prediccion` con PK `(usuario_id, partido_id)` (V2) |
 | preferencia de avisos | `usuario.quiere_avisos BOOLEAN NOT NULL DEFAULT TRUE` (V2) |
+| `FiltroJwt` lee el rol en cada request | consulta `usuario` por id; el token solo lleva el `sub` |
+| `Usuario.contrasenaHash` con BCrypt | `contrasena_hash VARCHAR(100)`: BCrypt ocupa 60 |
 
 ---
 
